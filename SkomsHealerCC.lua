@@ -87,16 +87,28 @@ local function InExtraList(unit)
 	return false
 end
 
+-- the order Tsoukie's !!!ClassicAPI uses for the raid frame roles: the game's own assignment, the class, then talents
+local CANNOT_HEAL = { HUNTER = true, ROGUE = true, MAGE = true, WARLOCK = true, WARRIOR = true, DEATHKNIGHT = true }
+
 local function IsHealer(unit)
 	if not UnitExists(unit) or not UnitIsPlayer(unit) or UnitIsUnit(unit, "player") then return false end
 	if InExtraList(unit) then return true end
+	-- 1. a role assigned by a group finder is definitive (it is empty in arena and battleground groups)
+	if UnitGroupRolesAssigned then
+		local tank, heal, damage = UnitGroupRolesAssigned(unit)
+		if heal then return true end
+		if tank or damage then return false end
+	end
+	-- 2. classes that cannot heal
+	local class = select(2, UnitClass(unit))
+	if CANNOT_HEAL[class] then return false end
+	-- 3. the talents (LibGroupTalents)
 	if LGT then
 		local ok, role = pcall(LGT.GetUnitRole, LGT, unit)
 		if ok and role then return role == "healer" end
 	end
-	-- talents not known yet
+	-- 4. talents not known yet
 	if P.guessByClass then
-		local class = select(2, UnitClass(unit))
 		return HEALER_CLASSES[class] and true or false
 	end
 	return false
