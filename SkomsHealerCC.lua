@@ -531,7 +531,7 @@ local function Options()
 				get = function() return not P.locked end,
 				set = function(_, v) SetLocked(not v) end,
 			},
-			test = { type = "execute", order = 28, name = "Test", func = function() StartTest(8) end },
+			test = { type = "execute", order = 28, name = "Test", func = function() StartTest(30) end },
 			header3 = { type = "header", name = "Alert", order = 30 },
 			sound = { type = "toggle", name = "Play a sound", order = 31 },
 			soundName = {
@@ -592,11 +592,21 @@ SLASH_SKOMSHEALERCC2 = "/skomshealercc"
 SlashCmdList["SKOMSHEALERCC"] = function(msg)
 	msg = strlower(msg or "")
 	if msg == "test" then
-		StartTest(8)
+		StartTest(30)
 	elseif msg == "unlock" then
 		SetLocked(false)
 	elseif msg == "lock" then
 		SetLocked(true)
+	elseif msg == "info" then
+		local say = function(m) print("|cff33ff99SkomsHealerCC|r: " .. m) end
+		say("version " .. tostring(GetAddOnMetadata("SkomsHealerCC", "Version")))
+		say(("settings: icon size %s, timer size %s, timer inside %s, use OmniCC %s"):format(tostring(P.size), tostring(P.timerSize), tostring(P.timerInside), tostring(P.useOmniCC)))
+		say(("icon: shown=%s alpha=%.2f width=%.0f"):format(tostring(f:IsShown()), f:GetAlpha() or 0, f:GetWidth() or 0))
+		say(("our timer: shown=%s text='%s' holder scale=%.2f (wanted %.2f) string height=%.0f"):format(tostring(f.timer:IsShown()), tostring(f.timer:GetText()),
+			f.timerHolder:GetScale() or 0, (P.timerSize or 36) / MAX_FONT, f.timer:GetStringHeight() or 0))
+		say(("holder shown=%s effective scale=%.2f; the icon asks OmniCC to draw: %s; noCooldownCount=%s"):format(tostring(f.timerHolder:IsShown()),
+			f.timerHolder:GetEffectiveScale() or 0, tostring(f.useOmni), tostring(f.cd.noCooldownCount)))
+		OmniCCReport()
 	elseif msg == "omnicc" then
 		OmniCCReport()
 	elseif msg == "fonttest" then
