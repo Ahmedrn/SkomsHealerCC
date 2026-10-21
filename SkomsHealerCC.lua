@@ -212,23 +212,19 @@ local function ForEachOmniCCTimer(fn)
 	end)
 end
 
--- Enlarge OmniCC's timer text on our icon by changing its font size. OmniCC sets the size itself from its own
--- settings and the icon width, and only when the icon is resized or a setting changes, so we apply
--- (what OmniCC would use) x (the user's multiplier) a few times a second and right when the icon appears.
+-- Enlarge OmniCC's timer on our icon by scaling its timer frame. (Changing the font size of its text does nothing on
+-- screen in this client: the text keeps being drawn at the old size.) OmniCC scales the frame by the style of the period
+-- (seconds, soon, ...) each time the period changes, so we re-apply  OmniCC's scale x the user's multiplier  often.
 local function FixOneTimer(timer)
-	if not (timer and timer.text) then return end
-	local font, size, outline = OmniCC:GetFontInfo()
-	if OmniCC.ScalingText and OmniCC:ScalingText() then
-		size = size * (timer:GetWidth() / 36)
+	if not timer then return end
+	local base = 1
+	if timer.start and timer.duration and timer.GetPeriodStyle and OmniCC.GetPeriodScale then
+		local remain = timer.duration - (GetTime() - timer.start)
+		base = OmniCC:GetPeriodScale(timer:GetPeriodStyle(remain)) or 1
 	end
-	size = size * (P.omniccScale or 1)
-	if size < 1 then return end
-	local curFont, curSize = timer.text:GetFont()
-	if not curSize or math.abs(curSize - size) > 0.5 or curFont ~= font then
-		if not timer.text:SetFont(font, size, outline) then
-			timer.text:SetFont(STANDARD_TEXT_FONT, size, outline)
-		end
-		timer.fontSize = size
+	local wanted = base * (P.omniccScale or 1)
+	if math.abs(timer:GetScale() - wanted) > 0.01 then
+		timer:SetScale(wanted)
 	end
 end
 
@@ -249,9 +245,9 @@ local function OmniCCReport()
 		n = n + 1
 		local curFont, curSize = timer.text:GetFont()
 		local h = timer.text:GetStringHeight() or 0
-		say(("timer %d: on %s, text '%s' %.1f pt (string height %.0f px, timer scale %.2f), timer shown=%s, text shown=%s, effective scale %.2f"):format(
-			n, timer.cooldown == f.cd and "our cooldown frame" or "another frame under our icon", tostring(timer.text:GetText()), curSize or 0, h,
-			timer:GetScale(), tostring(timer:IsShown()), tostring(timer.text:IsShown()), timer:GetEffectiveScale()))
+		say(("timer %d: on %s, text '%s', font %.1f pt x timer scale %.2f = about %.0f pt on screen (string height %.0f px); timer shown=%s, text shown=%s"):format(
+			n, timer.cooldown == f.cd and "our cooldown frame" or "another frame under our icon", tostring(timer.text:GetText()), curSize or 0,
+			timer:GetScale(), (curSize or 0) * timer:GetScale(), h, tostring(timer:IsShown()), tostring(timer.text:IsShown())))
 	end)
 	if n == 0 then say("OmniCC has no timer on our icon yet (use /shcc test first).") end
 end

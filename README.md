@@ -1,4 +1,4 @@
-# SkomsHealerCC 0.2.4 (WoW 3.3.5a)
+# SkomsHealerCC 0.2.5 (WoW 3.3.5a)
 
 A big icon, a countdown and a sound when an enemy crowd control lands on **your healer**, with the border coloured by the type of the effect.
 
