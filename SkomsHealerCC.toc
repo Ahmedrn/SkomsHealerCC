@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Title: SkomsHealerCC
 ## Notes: Big icon and sound when an enemy crowd control lands on your healer (arena / battlegrounds). Border colour by the type of the effect.
-## Version: 0.2.1
+## Version: 0.2.2
 ## Author: Skom
 ## SavedVariables: SkomsHealerCCDB
 ## OptionalDeps: LibStub, CallbackHandler-1.0, LibSharedMedia-3.0, LibGroupTalents-1.0, LibTalentQuery-1.0, WeakAuras, DBM-Core, OmniCC

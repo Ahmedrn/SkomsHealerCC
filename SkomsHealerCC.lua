@@ -31,7 +31,7 @@ local defaults = {
 		titleText = "HEALER CC",
 		showTimer = true,
 		useOmniCC = true,         -- when OmniCC is installed, let it draw the timer (and hide ours)
-		omniccScale = 1.5,        -- size of OmniCC's timer text, relative to what OmniCC would draw
+		omniccScale = 1.0,        -- size of OmniCC's timer text: 1 = what OmniCC draws, more = bigger
 		showSpellName = false,
 		colorBorder = true,
 		sound = true,
@@ -453,8 +453,8 @@ local function Options()
 				hidden = function() return not OmniCCAvailable() end,
 			},
 			omniccScale = {
-				type = "range", name = "OmniCC timer size", order = 24.2, min = 0.5, max = 4, step = 0.1,
-				desc = "Multiplies the size of OmniCC's text on this icon.",
+				type = "range", name = "OmniCC timer size", order = 24.2, min = 0.5, max = 3, step = 0.1,
+				desc = "1 = the size OmniCC draws (it already scales with the icon). 1.5 or 2 is usually plenty.",
 				hidden = function() return not OmniCCAvailable() end,
 				disabled = function() return not P.useOmniCC end,
 			},
