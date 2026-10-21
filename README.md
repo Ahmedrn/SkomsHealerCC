@@ -2,7 +2,7 @@
 
 # SkomsHealerCC 1.0.0 (WoW 3.3.5a)
 
-A big icon, a countdown and a sound when an enemy crowd control lands on **your healer**, with the border coloured by the type of the effect.
+Your healer just got crowd controlled? You see it at once: a large icon of the effect, a big countdown that turns from yellow to red as it runs out, and a sound. The border shows the type of effect (magic, curse, poison, disease, physical), so you know whether it can be dispelled.
 
 - **Where:** arenas by default (option: arena + battlegrounds, or everywhere to test).
 - **Which healer:** the same order the raid frames of !!!ClassicAPI (Tsoukie) use: the role the game assigned (group finder), then the class (hunters, rogues, mages, warlocks, warriors and death knights cannot heal), then the teammate's talents (LibGroupTalents-1.0, which WeakAuras and DBM already load). Until the talents are known, priests, druids, paladins and shamans count as healers. You can also list names that are always healers.

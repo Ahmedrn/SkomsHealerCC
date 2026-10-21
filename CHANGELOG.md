@@ -4,7 +4,7 @@
 
 First release.
 
-- A big icon, a countdown and a sound when an enemy crowd control lands on your healer. Works in arenas by default (option: arenas and battlegrounds, or everywhere to test).
+- Alerts you the moment your healer is crowd controlled: a large icon of the effect, a countdown that turns from yellow to red, and a sound. Works in arenas by default (option: arenas and battlegrounds, or everywhere to test).
 - Healer detection in the order !!!ClassicAPI uses: the role the game assigned, then the class (classes that cannot heal are skipped), then the teammate's talents (LibGroupTalents-1.0). You can also list names that are always healers.
 - 152 crowd control spells (stuns, fears, incapacitates, silences, horror, sleep ...), the list of SkomsPlateBuffs checked against the 3.3.5a client data. Disarms and roots are optional.
 - Border colour by the type of the effect (magic blue, curse purple, disease green, poison dark green, physical red).

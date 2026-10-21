@@ -1,6 +1,6 @@
 ## Interface: 30300
 ## Title: SkomsHealerCC
-## Notes: Big icon and sound when an enemy crowd control lands on your healer (arena / battlegrounds). Border colour by the type of the effect.
+## Notes: Alerts you the moment your healer is crowd controlled: large icon of the effect, countdown that turns red, sound. Border coloured by effect type.
 ## Version: 1.0.0
 ## Author: Skom
 ## SavedVariables: SkomsHealerCCDB
