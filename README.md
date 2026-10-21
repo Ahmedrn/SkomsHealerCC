@@ -1,4 +1,4 @@
-# SkomsHealerCC 0.2.5 (WoW 3.3.5a)
+# SkomsHealerCC 0.3.0 (WoW 3.3.5a)
 
 A big icon, a countdown and a sound when an enemy crowd control lands on **your healer**, with the border coloured by the type of the effect.
 
@@ -6,9 +6,9 @@ A big icon, a countdown and a sound when an enemy crowd control lands on **your 
 - **Which healer:** the same order the raid frames of !!!ClassicAPI (Tsoukie) use: the role the game assigned (group finder), then the class (hunters, rogues, mages, warlocks, warriors and death knights cannot heal), then the teammate's talents (LibGroupTalents-1.0, which WeakAuras and DBM already load). Until the talents are known, priests, druids, paladins and shamans count as healers. You can also list names that are always healers.
 - **Which crowd control:** stuns, fears, incapacitates, silences, horror, sleep and similar (152 spells). Disarms and roots are optional. The list is the one of SkomsPlateBuffs, checked against the 3.3.5a client data.
 - **Look:** icon size, title ("HEALER CC"), timer, spell name, border colour by effect type (magic blue, curse purple, disease green, poison dark green, physical red). Movable.
-- **OmniCC:** if OmniCC is installed it draws the countdown on the icon and our own timer is hidden ("Show the timer" is off and greyed out). A slider enlarges OmniCC's text on this icon. CCs shorter than OmniCC's minimum duration still use our timer.
+- **Timer:** our own countdown, inside the icon (or under it), with a size slider. If OmniCC is installed it is told to stay away from this icon, so you never get two timers. OmniCC's own text on this icon cannot be resized from outside (it keeps OmniCC's size), so drawing the timer with OmniCC is an option ("Let OmniCC draw the timer instead"), not the default.
 - **Alert:** a sound (any LibSharedMedia sound) and, optionally, a party chat message.
-- Commands: `/shcc` options, `/shcc test`, `/shcc unlock`, `/shcc lock`, `/shcc omnicc` (what OmniCC does with the icon).
+- Commands: `/shcc` options, `/shcc test`, `/shcc unlock`, `/shcc lock`, `/shcc omnicc` (what OmniCC does with the icon), `/shcc fonttest`.
 
 ## Install
 Put the `SkomsHealerCC` folder in `Interface\AddOns`.
