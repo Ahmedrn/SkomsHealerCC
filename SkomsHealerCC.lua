@@ -191,19 +191,24 @@ local function OmniCCWillShow(duration)
 	return true
 end
 
--- Enlarge OmniCC's timer on our icon. OmniCC scales its timer frame by the style of the period (seconds, soon, ...)
--- every time that period changes, so we re-apply  OmniCC's scale x the user's multiplier  a few times a second.
+-- Enlarge OmniCC's timer on our icon by changing the font size of its text. OmniCC sets the size itself from its own
+-- settings and the icon width, and only when the icon is resized or a setting changes, so we apply
+-- (what OmniCC would use) x (the user's multiplier) a few times a second and right when the icon appears.
 local function FixOmniCCSize()
 	local timer = OmniCC.Timer:Get(f.cd)
-	if not timer then return false end
-	local base = 1
-	if timer.start and timer.duration and timer.GetPeriodStyle and OmniCC.GetPeriodScale then
-		local remain = timer.duration - (GetTime() - timer.start)
-		base = OmniCC:GetPeriodScale(timer:GetPeriodStyle(remain)) or 1
+	if not (timer and timer.text) then return false end
+	local font, size, outline = OmniCC:GetFontInfo()
+	if OmniCC.ScalingText and OmniCC:ScalingText() then
+		size = size * (timer:GetWidth() / 36)
 	end
-	local wanted = base * (P.omniccScale or 1)
-	if math.abs(timer:GetScale() - wanted) > 0.01 then
-		timer:SetScale(wanted)
+	size = size * (P.omniccScale or 1)
+	if size < 1 then return false end
+	local curFont, curSize = timer.text:GetFont()
+	if not curSize or math.abs(curSize - size) > 0.5 or curFont ~= font then
+		if not timer.text:SetFont(font, size, outline) then
+			timer.text:SetFont(STANDARD_TEXT_FONT, size, outline)
+		end
+		timer.fontSize = size
 	end
 	return true
 end
@@ -218,9 +223,11 @@ local function OmniCCReport()
 		say("OmniCC has no timer on our icon yet (use /shcc test first).")
 		return
 	end
-	local _, fsize = timer.text:GetFont()
-	say(("timer found: shown=%s scale=%.2f width=%.0f font=%.1f fontSize=%s enabled=%s visible=%s"):format(
-		tostring(timer:IsShown()), timer:GetScale(), timer:GetWidth(), fsize or 0, tostring(timer.fontSize), tostring(timer.enabled), tostring(timer.visible)))
+	local font, size = OmniCC:GetFontInfo()
+	local curFont, curSize = timer.text:GetFont()
+	say(("OmniCC would use %.1f pt (its size x the icon width); the text is %.1f pt; multiplier %s; timer frame scale %.2f; shown=%s"):format(
+		(OmniCC.ScalingText and OmniCC:ScalingText()) and size * (timer:GetWidth() / 36) or size, curSize or 0, tostring(P.omniccScale),
+		timer:GetScale(), tostring(timer:IsShown())))
 end
 
 local current       -- what is shown: { icon, name, spellId, duration, expiration, dispel }
@@ -546,3 +553,4 @@ end
 
 -- for tests
 ns.IsCC, ns.IsHealer, ns.ScanUnit, ns.BuildSets, ns.RebuildHealers = IsCC, IsHealer, ScanUnit, BuildSets, RebuildHealers
+ns.P = function() return P end
