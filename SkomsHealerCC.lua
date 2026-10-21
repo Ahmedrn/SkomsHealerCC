@@ -31,7 +31,6 @@ local defaults = {
 		titleText = "HEALER CC",
 		showTimer = true,
 		useOmniCC = false,        -- OmniCC draws the countdown instead of ours
-		omniccScale = 1.5,        -- scale of OmniCC's timer frame: 1 = OmniCC's own size
 		timerSize = 36,           -- font size of our timer
 		timerInside = true,       -- inside the icon (like OmniCC) or under it
 		showSpellName = false,
@@ -164,14 +163,55 @@ f.border:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 3, -3)
 f.border:SetBackdrop(backdrop)
 f.border:SetFrameLevel(f.outline:GetFrameLevel() + 1)
 
--- This client never draws a font bigger than 20 pt (a 130 pt font measures the same as a 20 pt one). So the timer and the
--- title are drawn at 20 and the frame around them is scaled to the size the user asked for.
+-- This client never draws text bigger than about 20 px, whatever the font size or the frame scale. So the countdown is drawn
+-- with textures: media/digits.tga holds the digits 0-9 and "." in the game's own font (16 cells in a 1024x128 sheet).
 local MAX_FONT = 20
-f.timerHolder = CreateFrame("Frame", nil, f)
-f.timerHolder:SetWidth(1)
-f.timerHolder:SetHeight(1)
-f.timer = f.timerHolder:CreateFontString(nil, "OVERLAY")
-f.timer:SetFont("Fonts\\FRIZQT__.TTF", MAX_FONT, "OUTLINE")
+local DIGITS = "Interface\\AddOns\\SkomsHealerCC\\media\\digits.tga"
+local DIGIT_CHARS = "0123456789."
+f.digitHolder = CreateFrame("Frame", nil, f)
+f.digitHolder:SetWidth(1)
+f.digitHolder:SetHeight(1)
+f.digits = {}
+f.timerText = ""
+
+-- lay the text out: digits are 0.5 x the height wide, 0.42 x the height apart ("." 0.24)
+local function SetBigText(text)
+	f.timerText = text or ""
+	local H = P.timerSize or 36
+	local total = 0
+	for i = 1, #f.timerText do
+		total = total + ((f.timerText:sub(i, i) == ".") and 0.24 or 0.42) * H
+	end
+	total = total + 0.08 * H
+	local x = -total / 2
+	for i = 1, #f.timerText do
+		local c = f.timerText:sub(i, i)
+		local idx = DIGIT_CHARS:find(c, 1, true)
+		local tex = f.digits[i]
+		if not tex then
+			tex = f.digitHolder:CreateTexture(nil, "OVERLAY")
+			tex:SetTexture(DIGITS)
+			f.digits[i] = tex
+		end
+		local step = ((c == ".") and 0.24 or 0.42) * H
+		if idx then
+			tex:SetTexCoord((idx - 1) / 16, idx / 16, 0, 1)
+			tex:SetWidth(0.5 * H)
+			tex:SetHeight(H)
+			tex:ClearAllPoints()
+			if P.timerInside then
+				tex:SetPoint("LEFT", f.digitHolder, "CENTER", x + (step - 0.5 * H) / 2 + 0.04 * H, 0)
+			else
+				tex:SetPoint("TOPLEFT", f.digitHolder, "TOP", x + (step - 0.5 * H) / 2 + 0.04 * H, 0)
+			end
+			tex:Show()
+		else
+			tex:Hide()
+		end
+		x = x + step
+	end
+	for i = #f.timerText + 1, #f.digits do f.digits[i]:Hide() end
+end
 f.titleHolder = CreateFrame("Frame", nil, f)
 f.titleHolder:SetWidth(1)
 f.titleHolder:SetHeight(1)
@@ -221,25 +261,11 @@ local function ForEachOmniCCTimer(fn)
 	end)
 end
 
--- OmniCC's text is capped at 20 pt like all text here, so its timer frame is scaled: OmniCC's own scale for the period
--- (it resets it whenever the period changes) times the user's multiplier, applied a few times a second.
-local function FixOmniCCSize()
-	ForEachOmniCCTimer(function(timer)
-		local base = 1
-		if timer.start and timer.duration and timer.GetPeriodStyle and OmniCC.GetPeriodScale then
-			local remain = timer.duration - (GetTime() - timer.start)
-			base = OmniCC:GetPeriodScale(timer:GetPeriodStyle(remain)) or 1
-		end
-		local wanted = base * (P.omniccScale or 1)
-		if math.abs(timer:GetScale() - wanted) > 0.01 then timer:SetScale(wanted) end
-	end)
-end
-
 -- what OmniCC does with our icon: /shcc omnicc
 local function OmniCCReport()
 	local say = function(m) print("|cff33ff99SkomsHealerCC|r: " .. m) end
 	if not OmniCCAvailable() then say("OmniCC not found.") return end
-	say("OmniCC found. Use it: " .. tostring(P.useOmniCC) .. ", our icon asks for it now: " .. tostring(f.useOmni) .. ", size multiplier: " .. tostring(P.omniccScale) .. ", our icon is shown: " .. tostring(f:IsShown()))
+	say("OmniCC found. Use it: " .. tostring(P.useOmniCC) .. ", our icon asks for it now: " .. tostring(f.useOmni) .. ", our icon is shown: " .. tostring(f:IsShown()))
 	local n = 0
 	ForEachOmniCCTimer(function(timer)
 		n = n + 1
@@ -260,18 +286,14 @@ local function ApplyLayout()
 	local size = P.size
 	f:SetWidth(size)
 	f:SetHeight(size)
-	-- timer: drawn at MAX_FONT, scaled to the chosen size
-	local timerScale = math.max(0.3, (P.timerSize or 36) / MAX_FONT)
-	f.timerHolder:SetScale(timerScale)
-	f.timerHolder:ClearAllPoints()
-	f.timer:ClearAllPoints()
+	-- timer: the digit textures, inside the icon or under it
+	f.digitHolder:ClearAllPoints()
 	if P.timerInside then
-		f.timerHolder:SetPoint("CENTER", f, "CENTER", 0, 0)
-		f.timer:SetPoint("CENTER", f.timerHolder, "CENTER", 0, 0)
+		f.digitHolder:SetPoint("CENTER", f, "CENTER", 0, 0)
 	else
-		f.timerHolder:SetPoint("TOP", f, "BOTTOM", 0, -6)
-		f.timer:SetPoint("TOP", f.timerHolder, "TOP", 0, 0)
+		f.digitHolder:SetPoint("TOP", f, "BOTTOM", 0, -6)
 	end
+	SetBigText(f.timerText)
 	-- title: the same
 	local titleSize = math.max(12, math.floor(size * 0.34))
 	f.titleHolder:SetScale(titleSize / MAX_FONT)
@@ -282,7 +304,7 @@ local function ApplyLayout()
 	f.title:SetText(P.titleText or "")
 	SetShown(f.title, P.showTitle)
 	f.spell:ClearAllPoints()
-	f.spell:SetPoint("TOP", (P.showTimer and not OmniCCActive() and not P.timerInside) and f.timer or f, "BOTTOM", 0, -2)
+	f.spell:SetPoint("TOP", f, "BOTTOM", 0, -((P.showTimer and not OmniCCActive() and not P.timerInside) and ((P.timerSize or 36) + 10) or 2))
 	f:ClearAllPoints()
 	f:SetPoint(P.point or "CENTER", UIParent, P.relPoint or P.point or "CENTER", P.x or 0, P.y or 0)
 end
@@ -302,8 +324,7 @@ local function Present(best)
 	local c = (P.colorBorder and BORDER[best.dispel or "none"]) or BORDER.none
 	f.border:SetBackdropBorderColor(c[1], c[2], c[3], 1)
 	f.spell:SetText(P.showSpellName and best.name or "")
-	SetShown(f.timer, P.showTimer and not f.useOmni)
-	if f.useOmni then FixOmniCCSize() end
+	SetShown(f.digitHolder, P.showTimer and not f.useOmni)
 	if not f:IsShown() then
 		f:SetAlpha(0)
 		f:Show()
@@ -403,10 +424,8 @@ f:SetScript("OnUpdate", function(self, elapsed)
 		Refresh()
 		return
 	end
-	if f.useOmni then
-		FixOmniCCSize()
-	else
-		f.timer:SetText(left >= 10 and ("%d"):format(left) or ("%.1f"):format(left))
+	if not f.useOmni then
+		SetBigText(left >= 10 and ("%d"):format(left) or ("%.1f"):format(left))
 	end
 end)
 
@@ -510,14 +529,8 @@ local function Options()
 			},
 			useOmniCC = {
 				type = "toggle", name = "Let OmniCC draw the timer instead", order = 24.3, width = "full",
-				desc = "OmniCC is installed. Off: our own timer is used (and OmniCC does not draw on this icon). Timers shorter than OmniCC's minimum duration always use ours.",
+				desc = "OmniCC is installed. Off (recommended): our own timer is used, with the size setting, and OmniCC does not draw on this icon. On: OmniCC draws its small standard text, which cannot be made bigger in this client. Timers shorter than OmniCC's minimum duration always use ours.",
 				hidden = function() return not OmniCCAvailable() end,
-			},
-			omniccScale = {
-				type = "range", name = "OmniCC timer size", order = 24.4, min = 0.5, max = 4, step = 0.1,
-				desc = "1 = OmniCC's own size. It is drawn at its normal size and scaled, because this client does not draw text bigger than 20 pt.",
-				hidden = function() return not OmniCCAvailable() end,
-				disabled = function() return not P.useOmniCC end,
 			},
 			showSpellName = { type = "toggle", name = "Show the spell name", order = 25 },
 			colorBorder = {
@@ -602,10 +615,8 @@ SlashCmdList["SKOMSHEALERCC"] = function(msg)
 		say("version " .. tostring(GetAddOnMetadata("SkomsHealerCC", "Version")))
 		say(("settings: icon size %s, timer size %s, timer inside %s, use OmniCC %s"):format(tostring(P.size), tostring(P.timerSize), tostring(P.timerInside), tostring(P.useOmniCC)))
 		say(("icon: shown=%s alpha=%.2f width=%.0f"):format(tostring(f:IsShown()), f:GetAlpha() or 0, f:GetWidth() or 0))
-		say(("our timer: shown=%s text='%s' holder scale=%.2f (wanted %.2f) string height=%.0f"):format(tostring(f.timer:IsShown()), tostring(f.timer:GetText()),
-			f.timerHolder:GetScale() or 0, (P.timerSize or 36) / MAX_FONT, f.timer:GetStringHeight() or 0))
-		say(("holder shown=%s effective scale=%.2f; the icon asks OmniCC to draw: %s; noCooldownCount=%s"):format(tostring(f.timerHolder:IsShown()),
-			f.timerHolder:GetEffectiveScale() or 0, tostring(f.useOmni), tostring(f.cd.noCooldownCount)))
+		say(("our timer: shown=%s text='%s' digit height=%s textures=%d"):format(tostring(f.digitHolder:IsShown()), tostring(f.timerText), tostring(P.timerSize), #f.digits))
+		say(("the icon asks OmniCC to draw: %s; noCooldownCount=%s"):format(tostring(f.useOmni), tostring(f.cd.noCooldownCount)))
 		OmniCCReport()
 	elseif msg == "omnicc" then
 		OmniCCReport()
