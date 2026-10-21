@@ -30,9 +30,9 @@ local defaults = {
 		showTitle = true,
 		titleText = "HEALER CC",
 		showTimer = true,
-		useOmniCC = false,        -- OmniCC draws the countdown instead of ours
-		timerSize = 36,           -- font size of our timer
-		timerInside = true,       -- inside the icon (like OmniCC) or under it
+		timerColor = true,        -- yellow to red as the time runs out
+		timerSize = 36,           -- height of our timer digits
+		timerInside = true,       -- inside the icon or under it
 		showSpellName = false,
 		colorBorder = true,
 		sound = true,
@@ -150,6 +150,7 @@ f.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
 f.cd = CreateFrame("Cooldown", nil, f)
 f.cd:SetAllPoints(f)
+f.cd.noCooldownCount = true   -- OmniCC (and similar) skip this frame: only our own timer is drawn
 
 local backdrop = { edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 3 }
 f.outline = CreateFrame("Frame", nil, f)
@@ -175,8 +176,17 @@ f.digits = {}
 f.timerText = ""
 
 -- lay the text out: digits are 0.5 x the height wide, 0.42 x the height apart ("." 0.24)
+-- yellow (the usual cooldown colour) while there is plenty of time, then through orange to red at 0
+local function TimerColor(left)
+	if not P.timerColor or type(left) ~= "number" then return 1, 1, 0 end
+	local t = left / 8
+	if t > 1 then t = 1 elseif t < 0 then t = 0 end
+	return 1, t, 0
+end
+
 local function SetBigText(text)
 	f.timerText = text or ""
+	local r, g, b = TimerColor(f.timerLeft)
 	local H = P.timerSize or 36
 	local total = 0
 	for i = 1, #f.timerText do
@@ -196,6 +206,7 @@ local function SetBigText(text)
 		local step = ((c == ".") and 0.24 or 0.42) * H
 		if idx then
 			tex:SetTexCoord((idx - 1) / 16, idx / 16, 0, 1)
+			tex:SetVertexColor(r, g, b)
 			tex:SetWidth(0.5 * H)
 			tex:SetHeight(H)
 			tex:ClearAllPoints()
@@ -220,63 +231,6 @@ f.title:SetFont("Fonts\\FRIZQT__.TTF", MAX_FONT, "OUTLINE")
 f.title:SetTextColor(1, 0.1, 0.1)
 f.spell = f:CreateFontString(nil, "OVERLAY")
 f.spell:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
-
--- ---------------------------------------------------------------------------------------------------------
--- OmniCC: it draws the timer on every cooldown frame, ours included
--- ---------------------------------------------------------------------------------------------------------
-local function OmniCCAvailable()
-	return OmniCC ~= nil and OmniCC.Timer ~= nil and OmniCC.Timer.Get ~= nil
-end
-
-local function OmniCCActive()
-	return P.useOmniCC and OmniCCAvailable()
-end
-
--- OmniCC does not show timers for cooldowns shorter than its minimum, or for blacklisted frames: then ours is used
-local function OmniCCWillShow(duration)
-	if not OmniCCActive() or not duration or duration <= 0 then return false end
-	if OmniCC.GetMinDuration and duration < OmniCC:GetMinDuration() then return false end
-	if OmniCC.IsBlacklisted and OmniCC:IsBlacklisted(f.cd) then return false end
-	return true
-end
-
--- Every OmniCC timer that belongs to our icon: on our cooldown frame, and on any frame under our icon (another addon may put
--- its own cooldown frames inside it)
-local function IsUnderIcon(frame)
-	local p = frame
-	for _ = 1, 10 do
-		if not p then return false end
-		if p == f then return true end
-		p = p.GetParent and p:GetParent() or nil
-	end
-	return false
-end
-
-local function ForEachOmniCCTimer(fn)
-	if not OmniCCAvailable() or not OmniCC.Timer.ForAll then return end
-	OmniCC.Timer:ForAll(function(timer)
-		if timer.cooldown == f.cd or IsUnderIcon(timer) or (timer.cooldown and IsUnderIcon(timer.cooldown)) then
-			fn(timer)
-		end
-	end)
-end
-
--- what OmniCC does with our icon: /shcc omnicc
-local function OmniCCReport()
-	local say = function(m) print("|cff33ff99SkomsHealerCC|r: " .. m) end
-	if not OmniCCAvailable() then say("OmniCC not found.") return end
-	say("OmniCC found. Use it: " .. tostring(P.useOmniCC) .. ", our icon asks for it now: " .. tostring(f.useOmni) .. ", our icon is shown: " .. tostring(f:IsShown()))
-	local n = 0
-	ForEachOmniCCTimer(function(timer)
-		n = n + 1
-		local curFont, curSize = timer.text:GetFont()
-		local h = timer.text:GetStringHeight() or 0
-		say(("timer %d: on %s, text '%s', font %.1f pt x timer scale %.2f = about %.0f pt on screen (string height %.0f px); timer shown=%s, text shown=%s"):format(
-			n, timer.cooldown == f.cd and "our cooldown frame" or "another frame under our icon", tostring(timer.text:GetText()), curSize or 0,
-			timer:GetScale(), (curSize or 0) * timer:GetScale(), h, tostring(timer:IsShown()), tostring(timer.text:IsShown())))
-	end)
-	if n == 0 then say("OmniCC has no timer on our icon yet (use /shcc test first).") end
-end
 
 local current       -- what is shown: { icon, name, spellId, duration, expiration, dispel }
 local testing       -- fake CC for the Test button / unlock
@@ -304,27 +258,20 @@ local function ApplyLayout()
 	f.title:SetText(P.titleText or "")
 	SetShown(f.title, P.showTitle)
 	f.spell:ClearAllPoints()
-	f.spell:SetPoint("TOP", f, "BOTTOM", 0, -((P.showTimer and not OmniCCActive() and not P.timerInside) and ((P.timerSize or 36) + 10) or 2))
+	f.spell:SetPoint("TOP", f, "BOTTOM", 0, -((P.showTimer and not P.timerInside) and ((P.timerSize or 36) + 10) or 2))
 	f:ClearAllPoints()
 	f:SetPoint(P.point or "CENTER", UIParent, P.relPoint or P.point or "CENTER", P.x or 0, P.y or 0)
 end
 
 local function Present(best)
 	f.icon:SetTexture(best.icon)
-	f.useOmni = OmniCCWillShow(best.duration)
-	-- OmniCC skips cooldown frames flagged noCooldownCount: then only our timer is drawn
-	f.cd.noCooldownCount = (not f.useOmni) and true or nil
 	if best.duration and best.duration > 0 then
 		CooldownFrame_SetTimer(f.cd, best.expiration - best.duration, best.duration, 1)
-	end
-	if not f.useOmni and OmniCCAvailable() then
-		local omniTimer = OmniCC.Timer:Get(f.cd)
-		if omniTimer then omniTimer:Hide() end
 	end
 	local c = (P.colorBorder and BORDER[best.dispel or "none"]) or BORDER.none
 	f.border:SetBackdropBorderColor(c[1], c[2], c[3], 1)
 	f.spell:SetText(P.showSpellName and best.name or "")
-	SetShown(f.digitHolder, P.showTimer and not f.useOmni)
+	SetShown(f.digitHolder, P.showTimer)
 	if not f:IsShown() then
 		f:SetAlpha(0)
 		f:Show()
@@ -424,9 +371,8 @@ f:SetScript("OnUpdate", function(self, elapsed)
 		Refresh()
 		return
 	end
-	if not f.useOmni then
-		SetBigText(left >= 10 and ("%d"):format(left) or ("%.1f"):format(left))
-	end
+	f.timerLeft = left
+	SetBigText(left >= 10 and ("%d"):format(left) or ("%.1f"):format(left))
 end)
 
 -- ---------------------------------------------------------------------------------------------------------
@@ -514,23 +460,17 @@ local function Options()
 			titleText = { type = "input", name = "Title", order = 23 },
 			showTimer = {
 				type = "toggle", name = "Show the timer", order = 24,
-				desc = "Our own countdown. Off and greyed out while OmniCC draws the timer.",
-				disabled = function() return OmniCCActive() end,
-				get = function() return P.showTimer and not OmniCCActive() end,
 			},
 			timerSize = {
 				type = "range", name = "Timer size", order = 24.1, min = 10, max = 120, step = 1,
-				disabled = function() return OmniCCActive() end,
 			},
 			timerInside = {
 				type = "toggle", name = "Timer inside the icon", order = 24.2,
 				desc = "Off: under the icon.",
-				disabled = function() return OmniCCActive() end,
 			},
-			useOmniCC = {
-				type = "toggle", name = "Let OmniCC draw the timer instead", order = 24.3, width = "full",
-				desc = "OmniCC is installed. Off (recommended): our own timer is used, with the size setting, and OmniCC does not draw on this icon. On: OmniCC draws its small standard text, which cannot be made bigger in this client. Timers shorter than OmniCC's minimum duration always use ours.",
-				hidden = function() return not OmniCCAvailable() end,
+			timerColor = {
+				type = "toggle", name = "Timer colour from yellow to red", order = 24.3,
+				desc = "Yellow while more than 8 seconds are left, then orange, then red as it runs out. Off: always yellow.",
 			},
 			showSpellName = { type = "toggle", name = "Show the spell name", order = 25 },
 			colorBorder = {
@@ -613,13 +553,9 @@ SlashCmdList["SKOMSHEALERCC"] = function(msg)
 	elseif msg == "info" then
 		local say = function(m) print("|cff33ff99SkomsHealerCC|r: " .. m) end
 		say("version " .. tostring(GetAddOnMetadata("SkomsHealerCC", "Version")))
-		say(("settings: icon size %s, timer size %s, timer inside %s, use OmniCC %s"):format(tostring(P.size), tostring(P.timerSize), tostring(P.timerInside), tostring(P.useOmniCC)))
+		say(("settings: icon size %s, timer size %s, timer inside %s, colour %s"):format(tostring(P.size), tostring(P.timerSize), tostring(P.timerInside), tostring(P.timerColor)))
 		say(("icon: shown=%s alpha=%.2f width=%.0f"):format(tostring(f:IsShown()), f:GetAlpha() or 0, f:GetWidth() or 0))
 		say(("our timer: shown=%s text='%s' digit height=%s textures=%d"):format(tostring(f.digitHolder:IsShown()), tostring(f.timerText), tostring(P.timerSize), #f.digits))
-		say(("the icon asks OmniCC to draw: %s; noCooldownCount=%s"):format(tostring(f.useOmni), tostring(f.cd.noCooldownCount)))
-		OmniCCReport()
-	elseif msg == "omnicc" then
-		OmniCCReport()
 	elseif msg == "fonttest" then
 		local fs = UIParent:CreateFontString(nil, "OVERLAY")
 		for _, size in ipairs{ 14, 20, 30, 43, 60, 90, 130 } do
