@@ -191,18 +191,38 @@ local function OmniCCWillShow(duration)
 	return true
 end
 
--- Enlarge OmniCC's timer on our icon by changing the font size of its text. OmniCC sets the size itself from its own
+-- Every OmniCC timer that belongs to our icon: on our cooldown frame, and on any frame under our icon (another addon may put
+-- its own cooldown frames inside it)
+local function IsUnderIcon(frame)
+	local p = frame
+	for _ = 1, 10 do
+		if not p then return false end
+		if p == f then return true end
+		p = p.GetParent and p:GetParent() or nil
+	end
+	return false
+end
+
+local function ForEachOmniCCTimer(fn)
+	if not OmniCCAvailable() or not OmniCC.Timer.ForAll then return end
+	OmniCC.Timer:ForAll(function(timer)
+		if timer.cooldown == f.cd or IsUnderIcon(timer) or (timer.cooldown and IsUnderIcon(timer.cooldown)) then
+			fn(timer)
+		end
+	end)
+end
+
+-- Enlarge OmniCC's timer text on our icon by changing its font size. OmniCC sets the size itself from its own
 -- settings and the icon width, and only when the icon is resized or a setting changes, so we apply
 -- (what OmniCC would use) x (the user's multiplier) a few times a second and right when the icon appears.
-local function FixOmniCCSize()
-	local timer = OmniCC.Timer:Get(f.cd)
-	if not (timer and timer.text) then return false end
+local function FixOneTimer(timer)
+	if not (timer and timer.text) then return end
 	local font, size, outline = OmniCC:GetFontInfo()
 	if OmniCC.ScalingText and OmniCC:ScalingText() then
 		size = size * (timer:GetWidth() / 36)
 	end
 	size = size * (P.omniccScale or 1)
-	if size < 1 then return false end
+	if size < 1 then return end
 	local curFont, curSize = timer.text:GetFont()
 	if not curSize or math.abs(curSize - size) > 0.5 or curFont ~= font then
 		if not timer.text:SetFont(font, size, outline) then
@@ -210,24 +230,30 @@ local function FixOmniCCSize()
 		end
 		timer.fontSize = size
 	end
-	return true
+end
+
+local function FixOmniCCSize()
+	local n = 0
+	ForEachOmniCCTimer(function(timer) n = n + 1; FixOneTimer(timer) end)
+	return n > 0
 end
 
 -- what OmniCC does with our icon: /shcc omnicc
 local function OmniCCReport()
 	local say = function(m) print("|cff33ff99SkomsHealerCC|r: " .. m) end
 	if not OmniCCAvailable() then say("OmniCC not found.") return end
-	local timer = OmniCC.Timer:Get(f.cd)
-	say("OmniCC found. Use it: " .. tostring(P.useOmniCC) .. ", our icon asks for it now: " .. tostring(f.useOmni) .. ", size multiplier: " .. tostring(P.omniccScale))
-	if not timer then
-		say("OmniCC has no timer on our icon yet (use /shcc test first).")
-		return
-	end
-	local font, size = OmniCC:GetFontInfo()
-	local curFont, curSize = timer.text:GetFont()
-	say(("OmniCC would use %.1f pt (its size x the icon width); the text is %.1f pt; multiplier %s; timer frame scale %.2f; shown=%s"):format(
-		(OmniCC.ScalingText and OmniCC:ScalingText()) and size * (timer:GetWidth() / 36) or size, curSize or 0, tostring(P.omniccScale),
-		timer:GetScale(), tostring(timer:IsShown())))
+	say("OmniCC found. Use it: " .. tostring(P.useOmniCC) .. ", our icon asks for it now: " .. tostring(f.useOmni) .. ", size multiplier: " .. tostring(P.omniccScale)
+		.. ", our icon is shown: " .. tostring(f:IsShown()))
+	local n = 0
+	ForEachOmniCCTimer(function(timer)
+		n = n + 1
+		local curFont, curSize = timer.text:GetFont()
+		local h = timer.text:GetStringHeight() or 0
+		say(("timer %d: on %s, text '%s' %.1f pt (string height %.0f px, timer scale %.2f), timer shown=%s, text shown=%s, effective scale %.2f"):format(
+			n, timer.cooldown == f.cd and "our cooldown frame" or "another frame under our icon", tostring(timer.text:GetText()), curSize or 0, h,
+			timer:GetScale(), tostring(timer:IsShown()), tostring(timer.text:IsShown()), timer:GetEffectiveScale()))
+	end)
+	if n == 0 then say("OmniCC has no timer on our icon yet (use /shcc test first).") end
 end
 
 local current       -- what is shown: { icon, name, spellId, duration, expiration, dispel }
