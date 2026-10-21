@@ -30,6 +30,8 @@ local defaults = {
 		showTitle = true,
 		titleText = "HEALER CC",
 		showTimer = true,
+		useOmniCC = true,         -- when OmniCC is installed, let it draw the timer (and hide ours)
+		omniccScale = 1.5,        -- size of OmniCC's timer text, relative to what OmniCC would draw
 		showSpellName = false,
 		colorBorder = true,
 		sound = true,
@@ -170,6 +172,43 @@ f.title:SetTextColor(1, 0.1, 0.1)
 f.spell = f:CreateFontString(nil, "OVERLAY")
 f.spell:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
 
+-- ---------------------------------------------------------------------------------------------------------
+-- OmniCC: it draws the timer on every cooldown frame, ours included
+-- ---------------------------------------------------------------------------------------------------------
+local function OmniCCAvailable()
+	return OmniCC ~= nil and OmniCC.Timer ~= nil and OmniCC.Timer.Get ~= nil
+end
+
+local function OmniCCActive()
+	return P.useOmniCC and OmniCCAvailable()
+end
+
+-- OmniCC does not show timers for cooldowns shorter than its minimum, or for blacklisted frames: then ours is used
+local function OmniCCWillShow(duration)
+	if not OmniCCActive() or not duration or duration <= 0 then return false end
+	if OmniCC.GetMinDuration and duration < OmniCC:GetMinDuration() then return false end
+	if OmniCC.IsBlacklisted and OmniCC:IsBlacklisted(f.cd) then return false end
+	return true
+end
+
+-- keep OmniCC's text at the size the user asked for (OmniCC only resets it when the frame size or its font changes)
+local function FixOmniCCSize()
+	local timer = OmniCC.Timer:Get(f.cd)
+	if not (timer and timer.text) then return end
+	local font, size, outline = OmniCC:GetFontInfo()
+	if OmniCC.ScalingText and OmniCC:ScalingText() then
+		size = size * (timer:GetWidth() / 36)
+	end
+	size = size * (P.omniccScale or 1)
+	local curFont, curSize = timer.text:GetFont()
+	if size > 0 and (not curSize or math.abs(curSize - size) > 0.5) then
+		if not timer.text:SetFont(curFont or font, size, outline) then
+			timer.text:SetFont(STANDARD_TEXT_FONT, size, outline)
+		end
+		timer.fontSize = size
+	end
+end
+
 local current       -- what is shown: { icon, name, spellId, duration, expiration, dispel }
 local testing       -- fake CC for the Test button / unlock
 local lastAlert     -- spellId of the last alerted CC, so a refresh does not alert again
@@ -183,7 +222,7 @@ local function ApplyLayout()
 	f.title:SetText(P.titleText or "")
 	SetShown(f.title, P.showTitle)
 	f.spell:ClearAllPoints()
-	f.spell:SetPoint("TOP", P.showTimer and f.timer or f, P.showTimer and "BOTTOM" or "BOTTOM", 0, -2)
+	f.spell:SetPoint("TOP", (P.showTimer and not OmniCCActive()) and f.timer or f, "BOTTOM", 0, -2)
 	f:ClearAllPoints()
 	f:SetPoint(P.point or "CENTER", UIParent, P.relPoint or P.point or "CENTER", P.x or 0, P.y or 0)
 end
@@ -196,7 +235,8 @@ local function Present(best)
 	local c = (P.colorBorder and BORDER[best.dispel or "none"]) or BORDER.none
 	f.border:SetBackdropBorderColor(c[1], c[2], c[3], 1)
 	f.spell:SetText(P.showSpellName and best.name or "")
-	SetShown(f.timer, P.showTimer)
+	f.useOmni = OmniCCWillShow(best.duration)
+	SetShown(f.timer, P.showTimer and not f.useOmni)
 	if not f:IsShown() then
 		f:SetAlpha(0)
 		f:Show()
@@ -296,7 +336,11 @@ f:SetScript("OnUpdate", function(self, elapsed)
 		Refresh()
 		return
 	end
-	f.timer:SetText(left >= 10 and ("%d"):format(left) or ("%.1f"):format(left))
+	if f.useOmni then
+		FixOmniCCSize()
+	else
+		f.timer:SetText(left >= 10 and ("%d"):format(left) or ("%.1f"):format(left))
+	end
 end)
 
 -- ---------------------------------------------------------------------------------------------------------
@@ -382,7 +426,23 @@ local function Options()
 			size = { type = "range", name = "Icon size", order = 21, min = 30, max = 160, step = 2 },
 			showTitle = { type = "toggle", name = "Show the title", order = 22 },
 			titleText = { type = "input", name = "Title", order = 23 },
-			showTimer = { type = "toggle", name = "Show the timer", order = 24 },
+			showTimer = {
+				type = "toggle", name = "Show the timer", order = 24,
+				desc = "Off and greyed out while OmniCC draws the timer.",
+				disabled = function() return OmniCCActive() end,
+				get = function() return P.showTimer and not OmniCCActive() end,
+			},
+			useOmniCC = {
+				type = "toggle", name = "Let OmniCC draw the timer", order = 24.1, width = "full",
+				desc = "OmniCC is installed: it draws the countdown on the icon, so our own timer is hidden. Timers shorter than OmniCC's minimum duration still use ours.",
+				hidden = function() return not OmniCCAvailable() end,
+			},
+			omniccScale = {
+				type = "range", name = "OmniCC timer size", order = 24.2, min = 0.5, max = 4, step = 0.1,
+				desc = "Multiplies the size of OmniCC's text on this icon.",
+				hidden = function() return not OmniCCAvailable() end,
+				disabled = function() return not P.useOmniCC end,
+			},
 			showSpellName = { type = "toggle", name = "Show the spell name", order = 25 },
 			colorBorder = {
 				type = "toggle", order = 26, width = "full",
