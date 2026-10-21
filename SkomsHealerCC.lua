@@ -176,10 +176,10 @@ f.digits = {}
 f.timerText = ""
 
 -- lay the text out: digits are 0.5 x the height wide, 0.42 x the height apart ("." 0.24)
--- yellow (the usual cooldown colour) when the effect starts, through orange to red as the share of its total duration left drops to 0
+-- yellow (the usual cooldown colour) when the effect starts, through orange to red as the share of its total duration left drops to a quarter (fully red from there)
 local function TimerColor(frac)
 	if not P.timerColor or type(frac) ~= "number" then return 1, 1, 0 end
-	local t = frac
+	local t = (frac - 0.25) / 0.75   -- fully red once a quarter of the duration is left
 	if t > 1 then t = 1 elseif t < 0 then t = 0 end
 	return 1, t, 0
 end
@@ -470,7 +470,7 @@ local function Options()
 			},
 			timerColor = {
 				type = "toggle", name = "Timer colour from yellow to red", order = 24.3,
-				desc = "Yellow when the effect starts, then orange, then red as the share of its duration that is left drops to zero (50% left is orange). Off: always yellow.",
+				desc = "Yellow when the effect starts, then orange, then red as the share of its duration that is left drops; fully red when 25% is left (the last 2 seconds of an 8 second effect). Off: always yellow.",
 			},
 			showSpellName = { type = "toggle", name = "Show the spell name", order = 25 },
 			colorBorder = {
