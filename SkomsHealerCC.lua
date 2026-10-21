@@ -486,6 +486,12 @@ local function Options()
 			},
 			test = { type = "execute", order = 28, name = "Test", func = function() StartTest(30) end },
 			header3 = { type = "header", name = "Alert", order = 30 },
+			headerHelp = { type = "header", name = "Help and feedback", order = 90 },
+			help = { type = "description", order = 91, fontSize = "medium",
+				name = "A healer that is not detected, a crowd control that is missing, something that looks wrong? Tell me what happened and in which spec.\n\n"
+					.. "- GitHub issues: https://github.com/Ahmedrn/SkomsHealerCC/issues\n"
+					.. "- A comment on the Warperia page\n"
+					.. "- Discord: skomzx" },
 			sound = { type = "toggle", name = "Play a sound", order = 31 },
 			soundName = {
 				type = "select", name = "Sound", order = 32, values = SoundValues,

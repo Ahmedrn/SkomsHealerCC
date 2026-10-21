@@ -1,4 +1,6 @@
-# SkomsHealerCC 0.4.0 (WoW 3.3.5a)
+<p align="center"><img src="logo.png" alt="SkomsHealerCC" width="120"></p>
+
+# SkomsHealerCC 1.0.0 (WoW 3.3.5a)
 
 A big icon, a countdown and a sound when an enemy crowd control lands on **your healer**, with the border coloured by the type of the effect.
 
@@ -11,10 +13,21 @@ A big icon, a countdown and a sound when an enemy crowd control lands on **your 
 - Commands: `/shcc` options, `/shcc test`, `/shcc unlock`, `/shcc lock`, `/shcc fonttest`, `/shcc info` (what the icon is drawing).
 
 ## Install
+
 Put the `SkomsHealerCC` folder in `Interface\AddOns`.
 
+## Help, missing crowd control and feedback
+
+If your healer is not detected, a crowd control is missing, or something looks wrong, tell me what happened and in which spec:
+
+- **GitHub issues:** https://github.com/Ahmedrn/SkomsHealerCC/issues
+- **A comment on the Warperia page**
+- **Discord:** `skomzx`
+
 ## Credits and inspirations
+
 - The WeakAura **"Healer cc (colored borders)"** by **Elsyn** (retail): the idea, the layout and the border colours.
 - The role detection order follows **!!!ClassicAPI** (Tsoukie).
 - **LibGroupTalents-1.0** (Zek) for healer detection, **LibSharedMedia-3.0**, **Ace3**.
 - Crowd control list from SkomsPlateBuffs (itself started from the BigDebuffs list by Jordon and Tsoukie).
+
