@@ -176,10 +176,10 @@ f.digits = {}
 f.timerText = ""
 
 -- lay the text out: digits are 0.5 x the height wide, 0.42 x the height apart ("." 0.24)
--- yellow (the usual cooldown colour) while there is plenty of time, then through orange to red at 0
-local function TimerColor(left)
-	if not P.timerColor or type(left) ~= "number" then return 1, 1, 0 end
-	local t = left / 8
+-- yellow (the usual cooldown colour) when the effect starts, through orange to red as the share of its total duration left drops to 0
+local function TimerColor(frac)
+	if not P.timerColor or type(frac) ~= "number" then return 1, 1, 0 end
+	local t = frac
 	if t > 1 then t = 1 elseif t < 0 then t = 0 end
 	return 1, t, 0
 end
@@ -371,7 +371,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
 		Refresh()
 		return
 	end
-	f.timerLeft = left
+	f.timerLeft = (current.duration and current.duration > 0) and (left / current.duration) or 1
 	SetBigText(left >= 10 and ("%d"):format(left) or ("%.1f"):format(left))
 end)
 
@@ -470,7 +470,7 @@ local function Options()
 			},
 			timerColor = {
 				type = "toggle", name = "Timer colour from yellow to red", order = 24.3,
-				desc = "Yellow while more than 8 seconds are left, then orange, then red as it runs out. Off: always yellow.",
+				desc = "Yellow when the effect starts, then orange, then red as the share of its duration that is left drops to zero (50% left is orange). Off: always yellow.",
 			},
 			showSpellName = { type = "toggle", name = "Show the spell name", order = 25 },
 			colorBorder = {
