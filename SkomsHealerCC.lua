@@ -30,7 +30,8 @@ local defaults = {
 		showTitle = true,
 		titleText = "HEALER CC",
 		showTimer = true,
-		useOmniCC = false,        -- OmniCC draws the countdown instead of ours (its size cannot be changed per icon)
+		useOmniCC = false,        -- OmniCC draws the countdown instead of ours
+		omniccScale = 1.5,        -- scale of OmniCC's timer frame: 1 = OmniCC's own size
 		timerSize = 36,           -- font size of our timer
 		timerInside = true,       -- inside the icon (like OmniCC) or under it
 		showSpellName = false,
@@ -163,12 +164,19 @@ f.border:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 3, -3)
 f.border:SetBackdrop(backdrop)
 f.border:SetFrameLevel(f.outline:GetFrameLevel() + 1)
 
-f.timer = f:CreateFontString(nil, "OVERLAY")
-f.timer:SetFont("Fonts\\FRIZQT__.TTF", 30, "OUTLINE")
-f.timer:SetPoint("TOP", f, "BOTTOM", 0, -8)
-f.title = f:CreateFontString(nil, "OVERLAY")
-f.title:SetFont("Fonts\\FRIZQT__.TTF", 24, "OUTLINE")
-f.title:SetPoint("BOTTOM", f, "TOP", 0, 10)
+-- This client never draws a font bigger than 20 pt (a 130 pt font measures the same as a 20 pt one). So the timer and the
+-- title are drawn at 20 and the frame around them is scaled to the size the user asked for.
+local MAX_FONT = 20
+f.timerHolder = CreateFrame("Frame", nil, f)
+f.timerHolder:SetWidth(1)
+f.timerHolder:SetHeight(1)
+f.timer = f.timerHolder:CreateFontString(nil, "OVERLAY")
+f.timer:SetFont("Fonts\\FRIZQT__.TTF", MAX_FONT, "OUTLINE")
+f.titleHolder = CreateFrame("Frame", nil, f)
+f.titleHolder:SetWidth(1)
+f.titleHolder:SetHeight(1)
+f.title = f.titleHolder:CreateFontString(nil, "OVERLAY")
+f.title:SetFont("Fonts\\FRIZQT__.TTF", MAX_FONT, "OUTLINE")
 f.title:SetTextColor(1, 0.1, 0.1)
 f.spell = f:CreateFontString(nil, "OVERLAY")
 f.spell:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
@@ -213,11 +221,25 @@ local function ForEachOmniCCTimer(fn)
 	end)
 end
 
+-- OmniCC's text is capped at 20 pt like all text here, so its timer frame is scaled: OmniCC's own scale for the period
+-- (it resets it whenever the period changes) times the user's multiplier, applied a few times a second.
+local function FixOmniCCSize()
+	ForEachOmniCCTimer(function(timer)
+		local base = 1
+		if timer.start and timer.duration and timer.GetPeriodStyle and OmniCC.GetPeriodScale then
+			local remain = timer.duration - (GetTime() - timer.start)
+			base = OmniCC:GetPeriodScale(timer:GetPeriodStyle(remain)) or 1
+		end
+		local wanted = base * (P.omniccScale or 1)
+		if math.abs(timer:GetScale() - wanted) > 0.01 then timer:SetScale(wanted) end
+	end)
+end
+
 -- what OmniCC does with our icon: /shcc omnicc
 local function OmniCCReport()
 	local say = function(m) print("|cff33ff99SkomsHealerCC|r: " .. m) end
 	if not OmniCCAvailable() then say("OmniCC not found.") return end
-	say("OmniCC found. Use it: " .. tostring(P.useOmniCC) .. ", our icon asks for it now: " .. tostring(f.useOmni) .. ", our icon is shown: " .. tostring(f:IsShown()))
+	say("OmniCC found. Use it: " .. tostring(P.useOmniCC) .. ", our icon asks for it now: " .. tostring(f.useOmni) .. ", size multiplier: " .. tostring(P.omniccScale) .. ", our icon is shown: " .. tostring(f:IsShown()))
 	local n = 0
 	ForEachOmniCCTimer(function(timer)
 		n = n + 1
@@ -238,14 +260,25 @@ local function ApplyLayout()
 	local size = P.size
 	f:SetWidth(size)
 	f:SetHeight(size)
-	f.timer:SetFont("Fonts\\FRIZQT__.TTF", P.timerSize or 36, "OUTLINE")
+	-- timer: drawn at MAX_FONT, scaled to the chosen size
+	local timerScale = math.max(0.3, (P.timerSize or 36) / MAX_FONT)
+	f.timerHolder:SetScale(timerScale)
+	f.timerHolder:ClearAllPoints()
 	f.timer:ClearAllPoints()
 	if P.timerInside then
-		f.timer:SetPoint("CENTER", f, "CENTER", 0, 0)
+		f.timerHolder:SetPoint("CENTER", f, "CENTER", 0, 0)
+		f.timer:SetPoint("CENTER", f.timerHolder, "CENTER", 0, 0)
 	else
-		f.timer:SetPoint("TOP", f, "BOTTOM", 0, -8)
+		f.timerHolder:SetPoint("TOP", f, "BOTTOM", 0, -6)
+		f.timer:SetPoint("TOP", f.timerHolder, "TOP", 0, 0)
 	end
-	f.title:SetFont("Fonts\\FRIZQT__.TTF", math.max(12, math.floor(size * 0.34)), "OUTLINE")
+	-- title: the same
+	local titleSize = math.max(12, math.floor(size * 0.34))
+	f.titleHolder:SetScale(titleSize / MAX_FONT)
+	f.titleHolder:ClearAllPoints()
+	f.titleHolder:SetPoint("BOTTOM", f, "TOP", 0, 10)
+	f.title:ClearAllPoints()
+	f.title:SetPoint("BOTTOM", f.titleHolder, "BOTTOM", 0, 0)
 	f.title:SetText(P.titleText or "")
 	SetShown(f.title, P.showTitle)
 	f.spell:ClearAllPoints()
@@ -270,6 +303,7 @@ local function Present(best)
 	f.border:SetBackdropBorderColor(c[1], c[2], c[3], 1)
 	f.spell:SetText(P.showSpellName and best.name or "")
 	SetShown(f.timer, P.showTimer and not f.useOmni)
+	if f.useOmni then FixOmniCCSize() end
 	if not f:IsShown() then
 		f:SetAlpha(0)
 		f:Show()
@@ -369,7 +403,9 @@ f:SetScript("OnUpdate", function(self, elapsed)
 		Refresh()
 		return
 	end
-	if not f.useOmni then
+	if f.useOmni then
+		FixOmniCCSize()
+	else
 		f.timer:SetText(left >= 10 and ("%d"):format(left) or ("%.1f"):format(left))
 	end
 end)
@@ -474,8 +510,14 @@ local function Options()
 			},
 			useOmniCC = {
 				type = "toggle", name = "Let OmniCC draw the timer instead", order = 24.3, width = "full",
-				desc = "OmniCC is installed. Its timer on this icon always keeps OmniCC's own size (it cannot be resized from outside), so our own timer, which has a size setting, is used by default. Timers shorter than OmniCC's minimum duration still use ours.",
+				desc = "OmniCC is installed. Off: our own timer is used (and OmniCC does not draw on this icon). Timers shorter than OmniCC's minimum duration always use ours.",
 				hidden = function() return not OmniCCAvailable() end,
+			},
+			omniccScale = {
+				type = "range", name = "OmniCC timer size", order = 24.4, min = 0.5, max = 4, step = 0.1,
+				desc = "1 = OmniCC's own size. It is drawn at its normal size and scaled, because this client does not draw text bigger than 20 pt.",
+				hidden = function() return not OmniCCAvailable() end,
+				disabled = function() return not P.useOmniCC end,
 			},
 			showSpellName = { type = "toggle", name = "Show the spell name", order = 25 },
 			colorBorder = {
