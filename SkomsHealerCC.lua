@@ -191,22 +191,36 @@ local function OmniCCWillShow(duration)
 	return true
 end
 
--- keep OmniCC's text at the size the user asked for (OmniCC only resets it when the frame size or its font changes)
+-- Enlarge OmniCC's timer on our icon. OmniCC scales its timer frame by the style of the period (seconds, soon, ...)
+-- every time that period changes, so we re-apply  OmniCC's scale x the user's multiplier  a few times a second.
 local function FixOmniCCSize()
 	local timer = OmniCC.Timer:Get(f.cd)
-	if not (timer and timer.text) then return end
-	local font, size, outline = OmniCC:GetFontInfo()
-	if OmniCC.ScalingText and OmniCC:ScalingText() then
-		size = size * (timer:GetWidth() / 36)
+	if not timer then return false end
+	local base = 1
+	if timer.start and timer.duration and timer.GetPeriodStyle and OmniCC.GetPeriodScale then
+		local remain = timer.duration - (GetTime() - timer.start)
+		base = OmniCC:GetPeriodScale(timer:GetPeriodStyle(remain)) or 1
 	end
-	size = size * (P.omniccScale or 1)
-	local curFont, curSize = timer.text:GetFont()
-	if size > 0 and (not curSize or math.abs(curSize - size) > 0.5) then
-		if not timer.text:SetFont(curFont or font, size, outline) then
-			timer.text:SetFont(STANDARD_TEXT_FONT, size, outline)
-		end
-		timer.fontSize = size
+	local wanted = base * (P.omniccScale or 1)
+	if math.abs(timer:GetScale() - wanted) > 0.01 then
+		timer:SetScale(wanted)
 	end
+	return true
+end
+
+-- what OmniCC does with our icon: /shcc omnicc
+local function OmniCCReport()
+	local say = function(m) print("|cff33ff99SkomsHealerCC|r: " .. m) end
+	if not OmniCCAvailable() then say("OmniCC not found.") return end
+	local timer = OmniCC.Timer:Get(f.cd)
+	say("OmniCC found. Use it: " .. tostring(P.useOmniCC) .. ", our icon asks for it now: " .. tostring(f.useOmni) .. ", size multiplier: " .. tostring(P.omniccScale))
+	if not timer then
+		say("OmniCC has no timer on our icon yet (use /shcc test first).")
+		return
+	end
+	local _, fsize = timer.text:GetFont()
+	say(("timer found: shown=%s scale=%.2f width=%.0f font=%.1f fontSize=%s enabled=%s visible=%s"):format(
+		tostring(timer:IsShown()), timer:GetScale(), timer:GetWidth(), fsize or 0, tostring(timer.fontSize), tostring(timer.enabled), tostring(timer.visible)))
 end
 
 local current       -- what is shown: { icon, name, spellId, duration, expiration, dispel }
@@ -237,6 +251,7 @@ local function Present(best)
 	f.spell:SetText(P.showSpellName and best.name or "")
 	f.useOmni = OmniCCWillShow(best.duration)
 	SetShown(f.timer, P.showTimer and not f.useOmni)
+	if f.useOmni then FixOmniCCSize() end
 	if not f:IsShown() then
 		f:SetAlpha(0)
 		f:Show()
@@ -521,6 +536,8 @@ SlashCmdList["SKOMSHEALERCC"] = function(msg)
 		SetLocked(false)
 	elseif msg == "lock" then
 		SetLocked(true)
+	elseif msg == "omnicc" then
+		OmniCCReport()
 	else
 		InterfaceOptionsFrame_OpenToCategory("SkomsHealerCC")
 		InterfaceOptionsFrame_OpenToCategory("SkomsHealerCC")

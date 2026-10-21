@@ -1,4 +1,4 @@
-# SkomsHealerCC 0.2.0 (WoW 3.3.5a)
+# SkomsHealerCC 0.2.1 (WoW 3.3.5a)
 
 A big icon, a countdown and a sound when an enemy crowd control lands on **your healer**, with the border coloured by the type of the effect.
 
@@ -8,7 +8,7 @@ A big icon, a countdown and a sound when an enemy crowd control lands on **your 
 - **Look:** icon size, title ("HEALER CC"), timer, spell name, border colour by effect type (magic blue, curse purple, disease green, poison dark green, physical red). Movable.
 - **OmniCC:** if OmniCC is installed it draws the countdown on the icon and our own timer is hidden ("Show the timer" is off and greyed out). A slider enlarges OmniCC's text on this icon. CCs shorter than OmniCC's minimum duration still use our timer.
 - **Alert:** a sound (any LibSharedMedia sound) and, optionally, a party chat message.
-- Commands: `/shcc` options, `/shcc test`, `/shcc unlock`, `/shcc lock`.
+- Commands: `/shcc` options, `/shcc test`, `/shcc unlock`, `/shcc lock`, `/shcc omnicc` (what OmniCC does with the icon).
 
 ## Install
 Put the `SkomsHealerCC` folder in `Interface\AddOns`.
