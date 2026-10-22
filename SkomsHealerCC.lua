@@ -572,8 +572,14 @@ SlashCmdList["SKOMSHEALERCC"] = function(msg)
 		end
 		fs:Hide()
 	else
-		InterfaceOptionsFrame_OpenToCategory("SkomsHealerCC")
-		InterfaceOptionsFrame_OpenToCategory("SkomsHealerCC")
+		-- own window: InterfaceOptionsFrame_OpenToCategory often only opens the AddOns list
+		local ACD = LibStub("AceConfigDialog-3.0")
+		if ACD.OpenFrames["SkomsHealerCC"] then
+			ACD:Close("SkomsHealerCC")
+		else
+			if InterfaceOptionsFrame and InterfaceOptionsFrame:IsShown() then InterfaceOptionsFrame:Hide() end
+			ACD:Open("SkomsHealerCC")
+		end
 	end
 end
 
