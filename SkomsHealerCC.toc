@@ -10,4 +10,5 @@
 
 libs\embeds.xml
 ccdata.lua
+about.lua
 SkomsHealerCC.lua

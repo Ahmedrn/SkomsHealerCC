@@ -521,6 +521,7 @@ events:SetScript("OnEvent", function(self, event, arg1)
 		db.RegisterCallback(ns, "OnProfileReset", OnProfileChanged)
 		P = db.profile
 		local options = Options()
+		options.args.about = ns.AboutGroup(99)
 		local profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(db)
 		LibStub("AceConfig-3.0"):RegisterOptionsTable("SkomsHealerCC", options)
 		LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SkomsHealerCC", "SkomsHealerCC")
