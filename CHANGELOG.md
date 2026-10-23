@@ -1,10 +1,16 @@
 # Changelog
 
+## 1.1.0 (2026-10-23)
+
+- A list of players to always treat as healers for each bracket (2v2, 3v3, Solo Queue), next to the one for every bracket. The bracket is read from the arena match you are in.
+- An About tab in the options: how to get help (GitHub issues, Warperia, Discord) and the other addons by Skom, with what is installed. ArenaLFG is marked as Warmane only.
+- `/shcc` opens the addon's own settings window; the Interface > AddOns page has a button for it (the long settings did not scroll there).
+- MIT licence.
+
 ## 1.0.0 (2026-10-21)
 
 First release.
 
-- An About tab in the options: how to get help (GitHub issues, Warperia, Discord) and the other addons by Skom, with what is installed. ArenaLFG is marked as Warmane only.
 - Alerts you the moment your healer is crowd controlled: a large icon of the effect, a countdown that turns from yellow to red, and a sound. Works in arenas by default (option: arenas and battlegrounds, or everywhere to test).
 - Healer detection in the order !!!ClassicAPI uses: the role the game assigned, then the class (classes that cannot heal are skipped), then the teammate's talents (LibGroupTalents-1.0). You can also list names that are always healers.
 - 152 crowd control spells (stuns, fears, incapacitates, silences, horror, sleep ...), the list of SkomsPlateBuffs checked against the 3.3.5a client data. Disarms and roots are optional.

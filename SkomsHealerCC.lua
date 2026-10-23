@@ -24,7 +24,8 @@ local defaults = {
 		includeDisarm = false,
 		includeRoots = false,
 		guessByClass = true,      -- until talents are known, priest / druid / paladin / shaman count as healers
-		extraHealers = "",        -- names, separated by commas
+		extraHealers = "",        -- names, separated by commas (every bracket)
+		extraHealers2v2 = "", extraHealers3v3 = "", extraHealersSolo = "",   -- the same, for one bracket only
 		size = 70,
 		point = "CENTER", relPoint = "CENTER", x = -135, y = 170,
 		showTitle = true,
@@ -77,17 +78,37 @@ end
 -- ---------------------------------------------------------------------------------------------------------
 -- who is a healer
 -- ---------------------------------------------------------------------------------------------------------
-local function InExtraList(unit)
-	local list = P.extraHealers
+-- the bracket being played: the size of the active arena match (the Solo Queue team is the size 5 one on this
+-- server), or else the size of the group
+local BRACKET_BY_SIZE = { [2] = "2v2", [3] = "3v3", [5] = "Solo" }
+
+local function CurrentBracket()
+	for i = 1, (MAX_BATTLEFIELD_QUEUES or 3) do
+		local status, _, _, _, _, size = GetBattlefieldStatus(i)
+		if status == "active" and BRACKET_BY_SIZE[size] then return BRACKET_BY_SIZE[size] end
+	end
+	local _, kind = IsInInstance()
+	local n = (GetNumRaidMembers() or 0) > 0 and GetNumRaidMembers() or ((GetNumPartyMembers() or 0) + 1)
+	if kind == "arena" and n == 5 then return "Solo" end
+	return n == 2 and "2v2" or n == 3 and "3v3" or nil
+end
+
+local function InNameList(list, name)
 	if not list or list == "" then return false end
-	local name = UnitName(unit)
-	if not name then return false end
-	name = strlower(name)
 	for entry in list:gmatch("[^,]+") do
 		local trimmed = entry:gsub("^%s+", ""):gsub("%s+$", "")
 		if strlower(trimmed) == name then return true end
 	end
 	return false
+end
+
+local bracketNow
+
+local function InExtraList(unit)
+	local name = UnitName(unit)
+	if not name then return false end
+	name = strlower(name)
+	return InNameList(P.extraHealers, name) or (bracketNow and InNameList(P["extraHealers" .. bracketNow], name)) or false
 end
 
 -- the order Tsoukie's !!!ClassicAPI uses for the raid frame roles: the game's own assignment, the class, then talents
@@ -130,6 +151,7 @@ end
 
 local function RebuildHealers()
 	for k in pairs(healerUnits) do healerUnits[k] = nil end
+	bracketNow = CurrentBracket()
 	ForEachGroupUnit(function(unit)
 		if IsHealer(unit) then healerUnits[unit] = true end
 	end)
@@ -451,6 +473,17 @@ local function Options()
 			},
 			extraHealers = {
 				type = "input", order = 12, width = "full", name = "Always treat these players as healers (names, separated by commas)",
+				desc = "Every bracket. The lists below add names for one bracket only.",
+			},
+			extraHealers2v2 = {
+				type = "input", order = 12.1, width = "full", name = "... in 2v2 only",
+			},
+			extraHealers3v3 = {
+				type = "input", order = 12.2, width = "full", name = "... in 3v3 only",
+			},
+			extraHealersSolo = {
+				type = "input", order = 12.3, width = "full", name = "... in Solo Queue only",
+				desc = "The bracket is read from the arena match you are in (Solo Queue is the 5 player team of this server).",
 			},
 			includeDisarm = { type = "toggle", order = 13, name = "Disarms" },
 			includeRoots = { type = "toggle", order = 14, name = "Roots" },
@@ -520,11 +553,27 @@ events:SetScript("OnEvent", function(self, event, arg1)
 		db.RegisterCallback(ns, "OnProfileCopied", OnProfileChanged)
 		db.RegisterCallback(ns, "OnProfileReset", OnProfileChanged)
 		P = db.profile
-		local options = Options()
+		local general = Options()
+		general.name, general.order = "Settings", 1
+		local options = { type = "group", name = "SkomsHealerCC", childGroups = "tab", args = { general = general } }
 		if ns.AboutGroup then options.args.about = ns.AboutGroup(99) end   -- about.lua needs a full restart after an update
 		local profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(db)
 		LibStub("AceConfig-3.0"):RegisterOptionsTable("SkomsHealerCC", options)
-		LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SkomsHealerCC", "SkomsHealerCC")
+		-- the settings are too long for this panel (it does not scroll): it only holds a button for the settings window
+		local panel = CreateFrame("Frame", nil, UIParent)
+		panel.name = "SkomsHealerCC"
+		local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+		title:SetPoint("TOPLEFT", 16, -16)
+		title:SetText("SkomsHealerCC")
+		local button = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+		button:SetWidth(200); button:SetHeight(24)
+		button:SetPoint("TOPLEFT", 16, -48)
+		button:SetText("Open the settings")
+		button:SetScript("OnClick", function() SlashCmdList["SKOMSHEALERCC"]("") end)
+		local hint = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+		hint:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -8)
+		hint:SetText("Or type /shcc")
+		InterfaceOptions_AddCategory(panel)
 		LibStub("AceConfig-3.0"):RegisterOptionsTable("SkomsHealerCCProfiles", profiles)
 		LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SkomsHealerCCProfiles", "Profiles", "SkomsHealerCC")
 		if LGT and LGT.RegisterCallback then
@@ -535,6 +584,9 @@ events:SetScript("OnEvent", function(self, event, arg1)
 		Apply()
 	elseif event == "UNIT_AURA" then
 		if healerUnits[arg1] then Refresh() end
+	elseif event == "UPDATE_BATTLEFIELD_STATUS" then
+		-- the match is known a moment after zoning in: only a change of bracket needs the healers again
+		if CurrentBracket() ~= bracketNow then RebuildHealers(); Refresh() end
 	else
 		-- zone change, roster change
 		UpdateScope()
@@ -543,7 +595,8 @@ events:SetScript("OnEvent", function(self, event, arg1)
 	end
 end)
 for _, e in ipairs{ "PLAYER_LOGIN", "UNIT_AURA", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA",
-                    "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "PARTY_MEMBER_ENABLE", "PARTY_MEMBER_DISABLE" } do
+                    "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "PARTY_MEMBER_ENABLE", "PARTY_MEMBER_DISABLE",
+                    "UPDATE_BATTLEFIELD_STATUS" } do
 	events:RegisterEvent(e)
 end
 

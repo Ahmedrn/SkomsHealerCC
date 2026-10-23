@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Title: SkomsHealerCC
 ## Notes: Alerts you the moment your healer is crowd controlled: large icon of the effect, countdown that turns red, sound. Border coloured by effect type.
-## Version: 1.0.0
+## Version: 1.1.0
 ## Author: Skom
 ## SavedVariables: SkomsHealerCCDB
 ## OptionalDeps: LibStub, CallbackHandler-1.0, LibSharedMedia-3.0, LibGroupTalents-1.0, LibTalentQuery-1.0, WeakAuras, DBM-Core, OmniCC
