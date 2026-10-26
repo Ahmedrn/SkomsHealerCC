@@ -1,33 +1,28 @@
 <p align="center"><img src="logo.png" alt="SkomsHealerCC" width="120"></p>
 
-# SkomsHealerCC 1.1.0 (WoW 3.3.5a)
+# Skom's Healer CC (WoW 3.3.5a)
 
-Your healer just got crowd controlled? You see it at once: a large icon of the effect, a big countdown that turns from yellow to red as it runs out, and a sound. The border shows the type of effect (magic, curse, poison, disease, physical), so you know whether it can be dispelled.
+Know the instant your healer is crowd controlled. A big icon, a countdown from yellow to red and a sound tell you it is time to peel, trinket or swap.
 
-- **Where:** arenas by default (option: arena + battlegrounds, or everywhere to test).
-- **Which healer:** the same order the raid frames of !!!ClassicAPI (Tsoukie) use: the role the game assigned (group finder), then the class (hunters, rogues, mages, warlocks, warriors and death knights cannot heal), then the teammate's talents (LibGroupTalents-1.0, which WeakAuras and DBM already load). Until the talents are known, priests, druids, paladins and shamans count as healers. You can also list names that are always healers, for every bracket or for 2v2, 3v3 or Solo Queue only.
-- **Which crowd control:** stuns, fears, incapacitates, silences, horror, sleep and similar (152 spells). Disarms and roots are optional. The list is the one of SkomsPlateBuffs, checked against the 3.3.5a client data.
-- **Look:** icon size, title ("HEALER CC"), timer, spell name, border colour by effect type (magic blue, curse purple, disease green, poison dark green, physical red). Movable.
-- **Timer:** big digits drawn with textures (this client never draws text bigger than about 20 px, so a font size cannot make a countdown big). Inside the icon or under it, with a size slider up to 120. The colour goes from yellow to orange to red as the percentage of the total duration left drops (fully red at 25%) (optional). OmniCC is told to stay away from this icon, so you never get two timers.
-- **Alert:** a sound (any LibSharedMedia sound) and, optionally, a party chat message.
-- Commands: `/shcc` options, `/shcc test`, `/shcc unlock`, `/shcc lock`, `/shcc fonttest`, `/shcc info` (what the icon is drawing).
+## Features
 
-## Install
+- **Automatic healer detection** by assigned role, class and talents. You can also list your healers by name for every bracket, or for 2v2, 3v3 or Solo Queue only.
+- **152 crowd control effects:** stuns, fears, incapacitates, silences, horrors, sleeps. Disarms and roots are optional.
+- **Dispel at a glance:** the border color shows magic, curse, poison, disease or physical.
+- **Big readable timer,** inside or under the icon, turning from yellow to red as it runs out.
+- **Sound alert** of your choice and an optional party message.
+- Movable and resizable, with title and spell name. Arenas by default, battlegrounds optional.
 
-Put the `SkomsHealerCC` folder in `Interface\AddOns`.
+## Commands
 
-## Help, missing crowd control and feedback
+- `/shcc` opens the options.
+- `/shcc test` shows a preview.
+- `/shcc unlock` and `/shcc lock` to move it.
 
-If your healer is not detected, a crowd control is missing, or something looks wrong, tell me what happened and in which spec:
+## Feedback
 
-- **GitHub issues:** https://github.com/Ahmedrn/SkomsHealerCC/issues
-- **A comment on the Warperia page**
+Healer not detected or a crowd control missing? Tell me what happened and in which spec:
+
+- **GitHub:** https://github.com/Ahmedrn/SkomsHealerCC/issues
+- **Warperia:** comment on the addon page
 - **Discord:** `skomzx`
-
-## Credits and inspirations
-
-- The WeakAura **"Healer cc (colored borders)"** by **Elsyn** (retail): the idea, the layout and the border colours.
-- The role detection order follows **!!!ClassicAPI** (Tsoukie).
-- **LibGroupTalents-1.0** (Zek) for healer detection, **LibSharedMedia-3.0**, **Ace3**.
-- Crowd control list from SkomsPlateBuffs (itself started from the BigDebuffs list by Jordon and Tsoukie).
-
