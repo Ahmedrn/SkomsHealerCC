@@ -1,9 +1,9 @@
 ## Interface: 30300
 ## Title: |cff33ff99Skom's|r Healer CC
 ## Notes: Alerts you the moment your healer is crowd controlled: large icon of the effect, countdown that turns red, sound. Border coloured by effect type.
-## Version: 1.1.1
+## Version: 1.2.0
 ## Author: Skom
-## SavedVariables: SkomsHealerCCDB
+## SavedVariables: SkomsHealerCCDB, SkomsLauncherDB
 ## OptionalDeps: LibStub, CallbackHandler-1.0, LibSharedMedia-3.0, LibGroupTalents-1.0, LibTalentQuery-1.0, WeakAuras, DBM-Core, OmniCC
 ## X-Inspired-By: the WeakAura "Healer cc (colored borders)" by Elsyn
 ## X-Uses: LibGroupTalents-1.0 (healer detection), LibSharedMedia-3.0 (sounds)
@@ -12,3 +12,4 @@ libs\embeds.xml
 ccdata.lua
 about.lua
 SkomsHealerCC.lua
+launcher.lua

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 (2026-10-30)
+
+- New Spells tab, with spell icons, to switch off single crowd controls; stuns, fears, incapacitates, silences and the rest can each be switched off as a category.
+- One Skom's minimap button opens all your Skom's addons when two or more are installed (/skoms).
+
 ## 1.1.1 (2026-10-26)
 
 - New display name: Skom's Healer CC.

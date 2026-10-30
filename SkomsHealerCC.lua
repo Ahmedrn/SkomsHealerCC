@@ -21,8 +21,10 @@ local defaults = {
 	profile = {
 		enabled = true,
 		scope = "arena",          -- arena, pvp (arena + battlegrounds), always
+		includeStuns = true, includeFears = true, includeIncap = true, includeSilences = true, includeOther = true,
 		includeDisarm = false,
 		includeRoots = false,
+		off = {},                 -- [spell name] = true: spells switched off in the Spells tab
 		guessByClass = true,      -- until talents are known, priest / druid / paladin / shaman count as healers
 		extraHealers = "",        -- names, separated by commas (every bracket)
 		extraHealers2v2 = "", extraHealers3v3 = "", extraHealersSolo = "",   -- the same, for one bracket only
@@ -56,19 +58,61 @@ local BORDER = {
 -- ---------------------------------------------------------------------------------------------------------
 local ccIds, ccNames = {}, {}
 
+-- the categories of the Settings and Spells tabs: { key, setting, title }
+local GROUPS = {
+	{ "stun", "includeStuns", "Stuns" },
+	{ "fear", "includeFears", "Fears and horrors" },
+	{ "incap", "includeIncap", "Incapacitates" },
+	{ "silence", "includeSilences", "Silences" },
+	{ "other", "includeOther", "Other (items and misc.)" },
+	{ "disarm", "includeDisarm", "Disarms" },
+	{ "root", "includeRoots", "Roots" },
+}
+
+-- ccdata.lua keeps one "hard" list: split it by spell name, anything not named here counts as "other"
+local GROUP_OF = {}
+for key, names in pairs({
+	stun = { "Bash", "Charge Stun", "Cheap Shot", "Concussion Blow", "Deep Freeze", "Demon Charge", "Gnaw",
+		"Hammer of Justice", "Holy Wrath", "Impact", "Inferno Effect", "Intercept", "Intimidation", "Kidney Shot",
+		"Knockdown", "Mace Specialization", "Maim", "Pounce", "Pyroclasm", "Ravage", "Reckless Charge",
+		"Revenge Stun", "Shadowfury", "Shockwave", "Starfire Stun", "Stoneclaw Stun", "Stun", "War Stomp" },
+	fear = { "Fear", "Psychic Scream", "Howl of Terror", "Death Coil", "Intimidating Shout", "Scare Beast",
+		"Seduction", "Psychic Horror", "Turn Evil" },
+	incap = { "Polymorph", "Hex", "Cyclone", "Hibernate", "Sap", "Gouge", "Blind", "Repentance", "Freezing Trap Effect",
+		"Freezing Arrow Effect", "Wyvern Sting", "Scatter Shot", "Dragon's Breath", "Banish", "Mind Control",
+		"Shackle Undead", "Sleep", "Hungering Cold" },
+	silence = { "Silence", "Strangulate", "Silencing Shot", "Spell Lock", "Garrote - Silence", "Silenced - Gag Order",
+		"Silenced - Improved Counterspell", "Silenced - Improved Kick", "Silenced - Shield of the Templar",
+		"Arcane Torrent", "Unstable Affliction" },
+}) do
+	for _, name in ipairs(names) do GROUP_OF[name] = key end
+end
+
+local sets
+local function Sets()
+	if sets then return sets end
+	sets = { disarm = ns.CC.disarm, root = ns.CC.root, stun = {}, fear = {}, incap = {}, silence = {}, other = {} }
+	for id in pairs(ns.CC.hard) do
+		sets[GROUP_OF[GetSpellInfo(id)] or "other"][id] = true
+	end
+	return sets
+end
+
 local function BuildSets()
 	for k in pairs(ccIds) do ccIds[k] = nil end
 	for k in pairs(ccNames) do ccNames[k] = nil end
 	local function add(set)
 		for id in pairs(set) do
-			ccIds[id] = true
 			local name = GetSpellInfo(id)
-			if name then ccNames[name] = true end   -- ranks and variants that are not listed still match by name
+			if not (name and P.off[name]) then
+				ccIds[id] = true
+				if name then ccNames[name] = true end   -- ranks and variants that are not listed still match by name
+			end
 		end
 	end
-	add(ns.CC.hard)
-	if P.includeDisarm then add(ns.CC.disarm) end
-	if P.includeRoots then add(ns.CC.root) end
+	for _, g in ipairs(GROUPS) do
+		if P[g[2]] then add(Sets()[g[1]]) end
+	end
 end
 
 local function IsCC(spellId, name)
@@ -451,6 +495,42 @@ local function SoundValues()
 	return values
 end
 
+-- one switch per spell name (ranks and variants share it), grouped like the categories
+local function SpellsGroup()
+	local args = {
+		info = { type = "description", order = 0, fontSize = "medium",
+			name = "Untick a spell to stop showing it. Use the Settings tab to switch a whole category on or off." },
+	}
+	for i, cat in ipairs(GROUPS) do
+		local icons, list = {}, {}
+		for id in pairs(Sets()[cat[1]]) do
+			local name, _, icon = GetSpellInfo(id)
+			if name and not icons[name] then icons[name] = icon or "Interface\\Icons\\INV_Misc_QuestionMark"; list[#list + 1] = name end
+		end
+		table.sort(list)
+		local function SetAll(on)
+			for _, name in ipairs(list) do P.off[name] = (not on) or nil end
+			Apply()
+			LibStub("AceConfigRegistry-3.0"):NotifyChange("SkomsHealerCC")
+		end
+		local spells = {
+			all = { type = "execute", order = 0, width = "half", name = "All on", func = function() SetAll(true) end },
+			none = { type = "execute", order = 0.1, width = "half", name = "All off", func = function() SetAll(false) end },
+			gap = { type = "description", order = 0.2, name = "" },
+		}
+		for n, name in ipairs(list) do
+			spells[name] = { type = "toggle", order = n, width = 1.4, name = name, image = icons[name] }
+		end
+		args[cat[1]] = {
+			type = "group", order = i, name = cat[3], args = spells,
+			disabled = function() return not P[cat[2]] end,
+			get = function(info) return not P.off[info.option.name] end,
+			set = function(info, v) P.off[info.option.name] = (not v) or nil; Apply() end,
+		}
+	end
+	return { type = "group", name = "Spells", order = 2, childGroups = "tab", args = args }
+end
+
 local function Options()
 	local function get(info) return P[info[#info]] end
 	local function set(info, v) P[info[#info]] = v; Apply() end
@@ -485,7 +565,12 @@ local function Options()
 				type = "input", order = 12.3, width = "full", name = "... in Solo Queue only",
 				desc = "The bracket is read from the arena match you are in (Solo Queue is the 5 player team of this server).",
 			},
-			includeDisarm = { type = "toggle", order = 13, name = "Disarms" },
+			includeStuns = { type = "toggle", order = 13, name = "Stuns" },
+			includeFears = { type = "toggle", order = 13.1, name = "Fears and horrors" },
+			includeIncap = { type = "toggle", order = 13.2, name = "Incapacitates" },
+			includeSilences = { type = "toggle", order = 13.3, name = "Silences" },
+			includeOther = { type = "toggle", order = 13.4, name = "Other (items and misc.)" },
+			includeDisarm = { type = "toggle", order = 13.5, name = "Disarms" },
 			includeRoots = { type = "toggle", order = 14, name = "Roots" },
 			header2 = { type = "header", name = "Look", order = 20 },
 			size = { type = "range", name = "Icon size", order = 21, min = 30, max = 160, step = 2 },
@@ -555,16 +640,17 @@ events:SetScript("OnEvent", function(self, event, arg1)
 		P = db.profile
 		local general = Options()
 		general.name, general.order = "Settings", 1
-		local options = { type = "group", name = "SkomsHealerCC", childGroups = "tab", args = { general = general } }
+		local options = { type = "group", name = "Skom's Healer CC", childGroups = "tab", args = { general = general } }
+		options.args.spells = SpellsGroup()
 		if ns.AboutGroup then options.args.about = ns.AboutGroup(99) end   -- about.lua needs a full restart after an update
 		local profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(db)
 		LibStub("AceConfig-3.0"):RegisterOptionsTable("SkomsHealerCC", options)
 		-- the settings are too long for this panel (it does not scroll): it only holds a button for the settings window
 		local panel = CreateFrame("Frame", nil, UIParent)
-		panel.name = "SkomsHealerCC"
+		panel.name = "Skom's Healer CC"
 		local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 		title:SetPoint("TOPLEFT", 16, -16)
-		title:SetText("SkomsHealerCC")
+		title:SetText("Skom's Healer CC")
 		local button = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
 		button:SetWidth(200); button:SetHeight(24)
 		button:SetPoint("TOPLEFT", 16, -48)
@@ -575,7 +661,7 @@ events:SetScript("OnEvent", function(self, event, arg1)
 		hint:SetText("Or type /shcc")
 		InterfaceOptions_AddCategory(panel)
 		LibStub("AceConfig-3.0"):RegisterOptionsTable("SkomsHealerCCProfiles", profiles)
-		LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SkomsHealerCCProfiles", "Profiles", "SkomsHealerCC")
+		LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SkomsHealerCCProfiles", "Profiles", "Skom's Healer CC")
 		if LGT and LGT.RegisterCallback then
 			LGT.RegisterCallback(ns, "LibGroupTalents_RoleChange", function() RebuildHealers(); Refresh() end)
 			LGT.RegisterCallback(ns, "LibGroupTalents_Update", function() RebuildHealers(); Refresh() end)
